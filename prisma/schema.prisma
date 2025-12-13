@@ -1,0 +1,125 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  SELF_EMPLOYED
+  CONTRACT
+}
+
+enum IdentificationType {
+  NATIONAL_ID
+  PASSPORT
+  DRIVERS_LICENSE
+}
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  email         String   @unique
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  applications  LoanApplication[]
+}
+
+model LoanApplication {
+  id                    String              @id @default(cuid())
+  userId                String
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Personal Information
+  firstName             String
+  lastName              String
+  dateOfBirth           DateTime
+  phoneNumber           String
+  alternativePhone      String?
+  residentialAddress    String
+  city                  String
+  postalCode            String
+  
+  // Employment Information
+  employmentType        EmploymentType
+  employerName          String
+  employerAddress       String?
+  monthlyIncome         Decimal             @db.Decimal(10, 2)
+  employmentDuration    Int                 // in months
+  
+  // Loan Details
+  loanAmount            Decimal             @db.Decimal(10, 2)
+  loanPurpose           String              @default("Petrol/Fuel Purchase")
+  repaymentPeriod       Int                 // in months
+  
+  // Vehicle Information
+  vehicleRegistration   String
+  vehicleMake           String
+  vehicleModel          String
+  vehicleYear           Int
+  averageMonthlyFuel    Decimal             @db.Decimal(10, 2)
+  
+  // Identification
+  identificationType    IdentificationType
+  identificationNumber  String
+  idDocumentUrl         String              // URL to uploaded ID
+  
+  // Financial Documents
+  bankStatementUrl      String              // URL to uploaded bank statement
+  
+  // Additional Information
+  hasExistingLoans      Boolean             @default(false)
+  existingLoanAmount    Decimal?            @db.Decimal(10, 2)
+  monthlyExpenses       Decimal             @db.Decimal(10, 2)
+  
+  // Application Status
+  status                ApplicationStatus   @default(PENDING)
+  applicationDate       DateTime            @default(now())
+  reviewedAt            DateTime?
+  reviewedBy            String?             // Admin Clerk ID
+  adminNotes            String?
+  rejectionReason       String?
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  userId      String
+  targetId    String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

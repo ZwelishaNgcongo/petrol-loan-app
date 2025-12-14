@@ -52,22 +52,34 @@ export default function AdminDashboard() {
 
   const checkUserRole = async () => {
     try {
+      console.log('🔍 [ADMIN] Checking user role...');
       const response = await fetch('/api/user/role');
+      console.log('📡 [ADMIN] API Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [ADMIN] User data received:', data);
+        console.log('🎯 [ADMIN] User role is:', data.role);
         setUserRole(data.role);
         
         // If not admin, redirect to user dashboard
         if (data.role !== 'ADMIN') {
+          console.log('❌ [ADMIN] User is NOT admin - Redirecting to /dashboard...');
           router.push('/dashboard');
           return;
         }
         
+        console.log('✅ [ADMIN] User is admin - Fetching all applications...');
         // If admin, fetch applications
         fetchApplications();
+      } else {
+        console.error('❌ [ADMIN] Response not OK:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[ADMIN] Error details:', errorData);
+        setLoading(false);
       }
     } catch (error) {
-      console.error('Error checking user role:', error);
+      console.error('💥 [ADMIN] Error checking user role:', error);
       setLoading(false);
     }
   };

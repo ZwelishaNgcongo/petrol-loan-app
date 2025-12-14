@@ -19,17 +19,52 @@ interface Application {
   monthlyIncome: number;
 }
 
-import { DashboardNavbar } from '@/components/dashboard/Navbar';
-
 export default function UserDashboard() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchApplications();
-  }, []);
+    if (isLoaded && user) {
+      checkUserRole();
+    }
+  }, [isLoaded, user]);
+
+  const checkUserRole = async () => {
+    try {
+      console.log('🔍 Checking user role...');
+      const response = await fetch('/api/user/role');
+      console.log('📡 API Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ User data received:', data);
+        console.log('🎯 User role is:', data.role);
+        setUserRole(data.role);
+        
+        // If admin, redirect to admin dashboard
+        if (data.role === 'ADMIN') {
+          console.log('🚀 User is ADMIN - Redirecting to /admin...');
+          router.push('/admin');
+          return;
+        }
+        
+        console.log('👤 User is regular user - Loading their applications...');
+        // If regular user, fetch their applications
+        fetchApplications();
+      } else {
+        console.error('❌ Response not OK:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error details:', errorData);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('💥 Error checking user role:', error);
+      setLoading(false);
+    }
+  };
 
   const fetchApplications = async () => {
     try {
@@ -74,12 +109,24 @@ export default function UserDashboard() {
     return (totalAmount / period).toFixed(2);
   };
 
-  if (loading) {
+  if (loading || !isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If admin, show loading while redirecting
+  if (userRole === 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to admin dashboard...</p>
         </div>
       </div>
     );

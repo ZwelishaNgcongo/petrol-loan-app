@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
 
 interface Application {
   id: string;
@@ -18,6 +18,8 @@ interface Application {
   repaymentPeriod: number;
   monthlyIncome: number;
 }
+
+import { DashboardNavbar } from '@/components/dashboard/Navbar';
 
 export default function UserDashboard() {
   const { user } = useUser();
@@ -84,8 +86,72 @@ export default function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation Bar with Sign Out */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 13.5V19H6v-7h6v1.5zm0-3.5H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
+                </svg>
+              </div>
+              <div>
+                <span className="text-xl font-black">
+                  <span className="text-orange-500">FUEL</span>
+                  <span className="text-gray-900">FINANCE</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-6">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="font-semibold text-orange-600"
+              >
+                Dashboard
+              </button>
+              
+              <button
+                onClick={() => router.push('/apply')}
+                className="px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition font-semibold"
+              >
+                New Application
+              </button>
+            </div>
+
+            {/* User Menu with Sign Out */}
+            <div className="flex items-center gap-4">
+              <div className="hidden md:block text-right">
+                <div className="text-sm font-semibold text-gray-900">
+                  {user?.firstName} {user?.lastName}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {user?.primaryEmailAddress?.emailAddress}
+                </div>
+              </div>
+              
+              {/* Sign Out Button - Using Clerk's SignOutButton */}
+              <SignOutButton redirectUrl="/">
+                <button
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sign Out
+                </button>
+              </SignOutButton>
+            </div>
+          </div>
+        </div>
+      </nav>
+      
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex justify-between items-center">
@@ -93,12 +159,14 @@ export default function UserDashboard() {
               <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.firstName || 'User'}!</h1>
               <p className="text-gray-600 mt-1">Manage your petrol loan applications</p>
             </div>
-            <button
-              onClick={() => router.push('/apply')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              New Application
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/apply')}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                New Application
+              </button>
+            </div>
           </div>
         </div>
 
@@ -215,6 +283,7 @@ export default function UserDashboard() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -1,59 +1,46 @@
-type ClassValue = string | number | boolean | undefined | null | ClassValue[];
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 /**
- * Merge class names (simplified version without clsx/tailwind-merge)
+ * Merge Tailwind CSS classes with proper precedence
  */
-export function cn(...inputs: ClassValue[]): string {
-  const classes: string[] = [];
-  
-  inputs.forEach(input => {
-    if (!input) return;
-    
-    if (typeof input === 'string') {
-      classes.push(input);
-    } else if (Array.isArray(input)) {
-      const nested = cn(...input);
-      if (nested) classes.push(nested);
-    }
-  });
-  
-  return classes.join(' ');
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 
 /**
  * Format currency to South African Rand
- * Fixed for hydration by explicitly setting locale
  */
 export function formatCurrency(amount: number): string {
-  // Use explicit locale to ensure server and client match
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency: 'ZAR',
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount).replace('ZAR', 'R');
+  }).format(amount);
 }
 
 /**
  * Format date to readable string
  */
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-ZA', {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-ZA', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(new Date(date));
+  });
 }
 
 /**
  * Format date to short string
  */
 export function formatDateShort(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-ZA', {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-ZA', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(new Date(date));
+  });
 }
 
 /**
@@ -74,28 +61,29 @@ export function formatRelativeTime(date: string | Date): string {
 
 /**
  * Calculate loan monthly payment with interest
+ * For 30-day loans, we calculate simple interest for 1 month
  */
 export function calculateMonthlyPayment(
   loanAmount: number,
-  repaymentPeriod: number,
-  annualInterestRate: number = 0.15
+  repaymentPeriod: number = 1, // Default 1 month (30 days)
+  annualInterestRate: number = 0.10 // 10% annual rate
 ): number {
-  const monthlyRate = annualInterestRate / 12;
-  const totalInterest = loanAmount * monthlyRate * repaymentPeriod;
-  const totalAmount = loanAmount + totalInterest;
+  // For 30-day loans, calculate simple interest
+  const interest = loanAmount * annualInterestRate * (repaymentPeriod / 12);
+  const totalAmount = loanAmount + interest;
   return totalAmount / repaymentPeriod;
 }
 
 /**
  * Calculate total interest
+ * For 30-day loans with 10% annual rate
  */
 export function calculateTotalInterest(
   loanAmount: number,
-  repaymentPeriod: number,
-  annualInterestRate: number = 0.15
+  repaymentPeriod: number = 1, // 1 month
+  annualInterestRate: number = 0.10 // 10% annual
 ): number {
-  const monthlyRate = annualInterestRate / 12;
-  return loanAmount * monthlyRate * repaymentPeriod;
+  return loanAmount * annualInterestRate * (repaymentPeriod / 12);
 }
 
 /**
@@ -234,7 +222,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout>;
+  let timeout: NodeJS.Timeout;
   return function executedFunction(...args: Parameters<T>) {
     const later = () => {
       clearTimeout(timeout);

@@ -22,6 +22,12 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* Fuel Finance Brand Colors */
+    --fuel-orange: 25 95% 53%;
+    --fuel-dark: 0 0% 8%;
+    --fuel-gray: 0 0% 15%;
+    --fuel-light-gray: 0 0% 96%;
   }
 
   .dark {
@@ -64,293 +70,217 @@
     text-wrap: balance;
   }
   
-  /* Gradient Text */
-  .gradient-text {
-    background: linear-gradient(to right, rgb(37, 99, 235), rgb(147, 51, 234), rgb(219, 39, 119));
-    background-clip: text;
+  /* Professional Fuel Gradient */
+  .fuel-gradient {
+    background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
+  }
+  
+  /* Subtle hover lift */
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Professional card style */
+  .fuel-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E5E5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .fuel-card-dark {
+    background: #1A1A1A;
+    border: 1px solid #2A2A2A;
+  }
+  
+  /* Professional button */
+  .btn-fuel {
+    background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
+    color: white;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-fuel:hover {
+    background: linear-gradient(135deg, #E55F00 0%, #E57A00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Professional text gradient */
+  .text-fuel-gradient {
+    background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
     -webkit-background-clip: text;
-    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   
-  /* Glassmorphism */
-  .glass {
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Fuel meter bar */
+  .fuel-meter {
+    width: 100%;
+    height: 6px;
+    background: #E5E5E5;
+    border-radius: 3px;
+    overflow: hidden;
   }
   
-  .glass-dark {
-    background-color: rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(0, 0, 0, 0.2);
+  .fuel-meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FF6B00 0%, #FF8C00 100%);
+    transition: width 0.3s ease;
   }
   
-  /* Animated Gradient Background */
-  .animated-gradient {
-    background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
-    background-size: 400% 400%;
-    animation: gradient 15s ease infinite;
+  /* Professional shadows */
+  .shadow-fuel {
+    box-shadow: 0 4px 16px rgba(255, 107, 0, 0.12);
   }
   
-  @keyframes gradient {
-    0% {
-      background-position: 0% 50%;
+  .shadow-fuel-lg {
+    box-shadow: 0 8px 24px rgba(255, 107, 0, 0.16);
+  }
+  
+  /* Subtle fade in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
     }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-  
-  /* Shimmer Effect */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.2) 20%,
-      rgba(255, 255, 255, 0.5) 60%,
-      rgba(255, 255, 255, 0)
-    );
-    animation: shimmer 2s infinite;
-    background-size: 200% 100%;
-  }
-  
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
   
-  /* Floating Animation */
-  .float {
-    animation: float 6s ease-in-out infinite;
+  .fade-in {
+    animation: fadeIn 0.6s ease-out;
   }
   
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-20px);
-    }
-  }
-  
-  /* Pulse Glow */
-  .pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-  
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-    }
-    50% {
-      box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
-    }
-  }
-  
-  /* Smooth Scroll */
+  /* Smooth scroll */
   .smooth-scroll {
     scroll-behavior: smooth;
   }
   
-  /* Custom Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  /* Professional input styling */
+  .input-fuel {
+    border: 2px solid #E5E5E5;
+    transition: border-color 0.2s ease;
   }
   
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background-color: rgb(243, 244, 246);
-    border-radius: 9999px;
+  .input-fuel:focus {
+    border-color: #FF6B00;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
   }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgb(59, 130, 246);
-    border-radius: 9999px;
+
+  /* Hero dark background with subtle gradient */
+  .hero-dark {
+    background: linear-gradient(180deg, #0A0A0A 0%, #1A1A1A 50%, #0A0A0A 100%);
   }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(37, 99, 235);
+
+  /* Petrol pump icon animation */
+  @keyframes pumpPulse {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.2;
+      transform: scale(1.05);
+    }
+  }
+
+  .pump-icon-bg {
+    animation: pumpPulse 4s ease-in-out infinite;
   }
 }
 
-/* Transitions */
-.transition-all-smooth {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Typography */
+.font-display {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-/* Card Hover Effects */
-.card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card-hover:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  transform: translateY(-0.25rem);
-}
-
-/* Button Ripple Effect */
-.btn-ripple {
-  position: relative;
-  overflow: hidden;
+/* Professional stat cards */
+.stat-card {
+  background: white;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
+  padding: 24px;
   transition: all 0.3s ease;
 }
 
-.btn-ripple::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+.stat-card:hover {
+  border-color: #FF6B00;
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.08);
 }
 
-.btn-ripple:active::before {
-  width: 300px;
-  height: 300px;
+/* Clean section dividers */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E5E5E5, transparent);
 }
 
-/* Loading Spinner */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+/* Professional badge */
+.badge-fuel {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: rgba(255, 107, 0, 0.1);
+  color: #FF6B00;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 107, 0, 0.2);
+}
+
+/* Container max-width */
+.container-fuel {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Professional grid layouts */
+.grid-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Clean focus states */
+*:focus-visible {
+  outline: 2px solid #FF6B00;
+  outline-offset: 2px;
+}
+
+/* Professional button variants */
+.btn-outline-fuel {
+  border: 2px solid #FF6B00;
+  color: #FF6B00;
+  background: transparent;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-fuel:hover {
+  background: #FF6B00;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .container-fuel {
+    padding: 0 16px;
   }
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-/* Skeleton Loading */
-.skeleton {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background-color: rgb(229, 231, 235);
-  border-radius: 0.25rem;
-}
-
-/* Success Checkmark Animation */
-@keyframes checkmark {
-  0% {
-    stroke-dashoffset: 50;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-
-.checkmark {
-  stroke-dasharray: 50;
-  stroke-dashoffset: 50;
-  animation: checkmark 0.5s ease-in-out forwards;
-}
-
-/* Error Shake Animation */
-@keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-10px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(10px);
-  }
-}
-
-.shake {
-  animation: shake 0.5s;
-}
-
-/* Fade In Up Animation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in-up {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-/* Slide In from Right */
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.slide-in-right {
-  animation: slideInRight 0.5s ease-out;
-}
-
-/* Scale In */
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.scale-in {
-  animation: scaleIn 0.3s ease-out;
-}
-
-/* Notification Badge Pulse */
-@keyframes badge-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-
-.badge-pulse {
-  animation: badge-pulse 2s ease-in-out infinite;
-}
-
-/* Neon Glow */
-.neon-glow {
-  text-shadow: 
-    0 0 5px rgba(59, 130, 246, 0.5),
-    0 0 10px rgba(59, 130, 246, 0.5),
-    0 0 20px rgba(59, 130, 246, 0.5),
-    0 0 40px rgba(59, 130, 246, 0.5);
-}
-
-/* Progress Bar Animation */
-@keyframes progress {
-  from {
-    width: 0%;
-  }
-}
-
-.progress-bar {
-  animation: progress 1s ease-out forwards;
 }

@@ -23,15 +23,15 @@ export default function LoanApplicationForm() {
     postalCode: '',
     
     // Employment Information
-    employmentType: 'FULL_TIME',
-    employerName: '',
+    employmentType: 'SELF_EMPLOYED', // Default for Uber drivers
+    employerName: 'Uber',
     employerAddress: '',
     monthlyIncome: '',
     employmentDuration: '',
     
     // Loan Details
     loanAmount: '',
-    repaymentPeriod: '6',
+    repaymentPeriod: '1', // Fixed at 30 days (1 month)
     
     // Vehicle Information
     vehicleRegistration: '',
@@ -398,7 +398,7 @@ export default function LoanApplicationForm() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Loan & Vehicle Details</h2>
                 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h3 className="font-semibold text-blue-900 mb-2">Loan Details</h3>
+                  <h3 className="font-semibold text-blue-900 mb-2">🚗 Uber Driver Fuel Loan</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Loan Amount (R) *</label>
@@ -409,27 +409,33 @@ export default function LoanApplicationForm() {
                         onChange={handleInputChange}
                         required
                         min="500"
-                        max="50000"
+                        max="20000"
                         step="100"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                      <p className="text-sm text-gray-500 mt-1">Min: R500, Max: R50,000</p>
+                      <p className="text-sm text-gray-500 mt-1">Min: R500, Max: R20,000</p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Repayment Period *</label>
-                      <select
-                        name="repaymentPeriod"
-                        value={formData.repaymentPeriod}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="3">3 months</option>
-                        <option value="6">6 months</option>
-                        <option value="12">12 months</option>
-                        <option value="24">24 months</option>
-                      </select>
+                      <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                        <div className="text-2xl font-bold text-purple-600">30 Days</div>
+                        <p className="text-xs text-gray-500">Single payment after 1 month</p>
+                      </div>
+                      <input type="hidden" name="repaymentPeriod" value="1" />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Interest Rate:</span>
+                      <span className="font-bold text-blue-600">10% per annum</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-2">
+                      <span className="text-gray-600">Total to Repay:</span>
+                      <span className="font-bold text-green-600">
+                        R{formData.loanAmount ? (parseFloat(formData.loanAmount) * 1.00833).toFixed(2) : '0.00'}
+                      </span>
                     </div>
                   </div>
                 </div>

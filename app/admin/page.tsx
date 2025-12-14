@@ -30,8 +30,10 @@ interface Application {
   };
 }
 
+import { DashboardNavbar } from '@/components/dashboard/Navbar';
+
 export default function AdminDashboard() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,13 +41,41 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<string>('ALL');
   const [adminNotes, setAdminNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchApplications();
-  }, []);
+    if (isLoaded && user) {
+      // Check user role from public metadata
+      checkUserRole();
+    }
+  }, [isLoaded, user]);
+
+  const checkUserRole = async () => {
+    try {
+      const response = await fetch('/api/user/role');
+      if (response.ok) {
+        const data = await response.json();
+        setUserRole(data.role);
+        
+        // If not admin, redirect to user dashboard
+        if (data.role !== 'ADMIN') {
+          router.push('/dashboard');
+          return;
+        }
+        
+        // If admin, fetch applications
+        fetchApplications();
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      setLoading(false);
+    }
+  };
 
   const fetchApplications = async () => {
     try {
+      // Your existing /api/applications route already handles role-based filtering
+      // Admins will get ALL applications, users will get only their own
       const response = await fetch('/api/applications');
       if (response.ok) {
         const data = await response.json();
@@ -105,17 +135,17 @@ export default function AdminDashboard() {
 
   const calculateAffordability = (app: Application) => {
     const interestRate = 0.15;
-    const totalInterest = app.loanAmount * (interestRate / 12) * app.repaymentPeriod;
-    const totalAmount = app.loanAmount + totalInterest;
+    const totalInterest = Number(app.loanAmount) * (interestRate / 12) * app.repaymentPeriod;
+    const totalAmount = Number(app.loanAmount) + totalInterest;
     const monthlyPayment = totalAmount / app.repaymentPeriod;
     
     const existingLoanPayment = app.hasExistingLoans && app.existingLoanAmount 
-      ? app.existingLoanAmount / 12 
+      ? Number(app.existingLoanAmount) / 12 
       : 0;
     
-    const totalMonthlyObligations = monthlyPayment + app.monthlyExpenses + existingLoanPayment;
-    const disposableIncome = app.monthlyIncome - totalMonthlyObligations;
-    const affordabilityRatio = (totalMonthlyObligations / app.monthlyIncome) * 100;
+    const totalMonthlyObligations = monthlyPayment + Number(app.monthlyExpenses) + existingLoanPayment;
+    const disposableIncome = Number(app.monthlyIncome) - totalMonthlyObligations;
+    const affordabilityRatio = (totalMonthlyObligations / Number(app.monthlyIncome)) * 100;
 
     return {
       monthlyPayment,
@@ -136,7 +166,7 @@ export default function AdminDashboard() {
     rejected: applications.filter(a => a.status === 'REJECTED').length,
   };
 
-  if (loading) {
+  if (loading || !isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -147,122 +177,144 @@ export default function AdminDashboard() {
     );
   }
 
+  // If not admin, show access denied while redirecting
+  if (userRole && userRole !== 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 mb-8 text-white">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="mt-1 opacity-90">Manage all loan applications</p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <DashboardNavbar />
+      
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 mb-8 text-white">
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="mt-1 opacity-90">Manage all loan applications</p>
+          </div>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-600">Total Applications</div>
-            <div className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</div>
+          {/* Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-sm font-medium text-gray-600">Total Applications</div>
+              <div className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-sm font-medium text-gray-600">Pending Review</div>
+              <div className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending}</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-sm font-medium text-gray-600">Approved</div>
+              <div className="text-3xl font-bold text-green-600 mt-2">{stats.approved}</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-sm font-medium text-gray-600">Rejected</div>
+              <div className="text-3xl font-bold text-red-600 mt-2">{stats.rejected}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-600">Pending Review</div>
-            <div className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-600">Approved</div>
-            <div className="text-3xl font-bold text-green-600 mt-2">{stats.approved}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-600">Rejected</div>
-            <div className="text-3xl font-bold text-red-600 mt-2">{stats.rejected}</div>
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex gap-2 flex-wrap">
-            {['ALL', 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED'].map(status => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {status.replace('_', ' ')}
-              </button>
-            ))}
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="flex gap-2 flex-wrap">
+              {['ALL', 'PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setFilter(status)}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    filter === status
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {status.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Applications Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Applicant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Loan Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Income
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredApplications.map((app) => {
-                  const affordability = calculateAffordability(app);
-                  return (
-                    <tr key={app.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {app.firstName} {app.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">{app.user?.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">R {app.loanAmount.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">{app.repaymentPeriod} months</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">R {app.monthlyIncome.toLocaleString()}</div>
-                        <div className={`text-xs ${affordability.isAffordable ? 'text-green-600' : 'text-red-600'}`}>
-                          DTI: {affordability.affordabilityRatio.toFixed(1)}%
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(app.status)}`}>
-                          {app.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(app.applicationDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => setSelectedApp(app)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          Review
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Applications Table */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Applicant
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loan Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Income
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredApplications.map((app) => {
+                    const affordability = calculateAffordability(app);
+                    return (
+                      <tr key={app.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {app.firstName} {app.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">{app.user?.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">R {Number(app.loanAmount).toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">{app.repaymentPeriod} months</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">R {Number(app.monthlyIncome).toLocaleString()}</div>
+                          <div className={`text-xs ${affordability.isAffordable ? 'text-green-600' : 'text-red-600'}`}>
+                            DTI: {affordability.affordabilityRatio.toFixed(1)}%
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(app.status)}`}>
+                            {app.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(app.applicationDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => setSelectedApp(app)}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Review
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredApplications.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No applications found</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -325,11 +377,11 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><span className="font-medium">Phone:</span> {selectedApp.phoneNumber}</div>
                   <div><span className="font-medium">Employment:</span> {selectedApp.employmentType.replace('_', ' ')}</div>
-                  <div><span className="font-medium">Monthly Income:</span> R {selectedApp.monthlyIncome.toLocaleString()}</div>
-                  <div><span className="font-medium">Monthly Expenses:</span> R {selectedApp.monthlyExpenses.toLocaleString()}</div>
+                  <div><span className="font-medium">Monthly Income:</span> R {Number(selectedApp.monthlyIncome).toLocaleString()}</div>
+                  <div><span className="font-medium">Monthly Expenses:</span> R {Number(selectedApp.monthlyExpenses).toLocaleString()}</div>
                   {selectedApp.hasExistingLoans && (
                     <div className="col-span-2">
-                      <span className="font-medium">Existing Loans:</span> R {selectedApp.existingLoanAmount?.toLocaleString() || 0}
+                      <span className="font-medium">Existing Loans:</span> R {selectedApp.existingLoanAmount ? Number(selectedApp.existingLoanAmount).toLocaleString() : 0}
                     </div>
                   )}
                 </div>

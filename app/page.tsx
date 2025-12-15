@@ -102,11 +102,11 @@ export default async function LandingPage() {
               <div className="h-1 w-48 mx-auto bg-gradient-to-r from-transparent via-orange-500 to-transparent mb-8"></div>
               
               <p className="text-2xl md:text-3xl text-gray-700 font-semibold mb-4 uppercase tracking-wide">
-                Instant Petrol Loans for Uber Drivers
+                Instant Petrol Loans
               </p>
               
               <p className="text-xl text-orange-600 font-bold mb-12 uppercase tracking-wide">
-                R500 - R20,000 • 30 Days • Only 10% Interest
+                R500 - R2000 • 30 Days • Only 10% Interest
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
@@ -114,7 +114,7 @@ export default async function LandingPage() {
                   href="/sign-up"
                   className="px-10 py-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg font-bold text-lg hover:shadow-xl hover:-translate-y-1 transition-all uppercase tracking-wide"
                 >
-                  Apply in 30 Seconds →
+                  Apply in Seconds →
                 </Link>
                 
                 <Link
@@ -152,7 +152,7 @@ export default async function LandingPage() {
                 Premium Features
               </h2>
               <p className="text-xl text-gray-600 uppercase tracking-wide">
-                High-Octane Financing for Uber Drivers
+                High-Octane Financing for Drivers
               </p>
             </div>
 
@@ -160,21 +160,21 @@ export default async function LandingPage() {
               {[
                 {
                   title: 'Instant Fuel',
-                  description: 'Get approved in 30 seconds. Money in your account within 24 hours. No waiting, no delays.',
+                  description: 'Get approved in minutes. Money in your account within minutes. No waiting, no delays.',
                   icon: '⚡',
-                  stat: '30s',
+                  stat: 'minutes',
                   statLabel: 'Approval Time'
                 },
                 {
                   title: 'Flat 10% Rate',
-                  description: 'Transparent pricing. No hidden fees. Borrow R500-R20,000 for 30 days. Simple and honest.',
+                  description: 'Transparent pricing. No hidden fees. Borrow R500-R2000 for 30 days. Simple and honest.',
                   icon: '💰',
                   stat: '10%',
                   statLabel: 'Interest Only'
                 },
                 {
                   title: 'Zero Stress',
-                  description: 'Bank-level encryption. Secure uploads. Protected data. Your information is completely safe.',
+                  description: 'Secure uploads. Protected data. Your information is completely safe.',
                   icon: '🔒',
                   stat: '256-bit',
                   statLabel: 'Encryption'
@@ -244,7 +244,7 @@ export default async function LandingPage() {
                   {
                     step: '02',
                     title: 'Verify',
-                    description: 'Upload your Uber profile and bank statements. Takes 2 minutes. Secure and encrypted.',
+                    description: 'Upload your profile and bank statements. Takes 2 minutes. Secure and encrypted.',
                     icon: '📤',
                   },
                   {
@@ -296,7 +296,7 @@ export default async function LandingPage() {
                 Ready to Fuel Up?
               </h2>
               <p className="text-2xl text-white/95 font-bold mb-12 uppercase tracking-wide">
-                Join Thousands of Uber Drivers Who Never Run on Empty
+                Join Thousands of Drivers Who Never Run on Empty
               </p>
               
               <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
@@ -315,18 +315,6 @@ export default async function LandingPage() {
                 </a>
               </div>
               
-              <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto pt-12 border-t border-white/30">
-                {[
-                  { value: '5,000+', label: 'Drivers Funded' },
-                  { value: 'R50M+', label: 'Fuel Financed' },
-                  { value: '99.9%', label: 'Approval Rate' }
-                ].map((stat, idx) => (
-                  <div key={idx} className="text-center">
-                    <div className="text-4xl font-black text-white mb-1">{stat.value}</div>
-                    <div className="text-sm font-bold text-white/90 uppercase tracking-wider">{stat.label}</div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </section>
@@ -342,7 +330,7 @@ export default async function LandingPage() {
                   </svg>
                   <span className="text-xl font-bold text-white">FuelFinance</span>
                 </div>
-                <p className="text-sm">Premium fuel financing for Uber drivers.</p>
+                <p className="text-sm">Premium fuel financing for drivers.</p>
               </div>
               
               <div>
@@ -357,24 +345,17 @@ export default async function LandingPage() {
               <div>
                 <h4 className="font-bold text-white mb-4 uppercase tracking-wide text-sm">Company</h4>
                 <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="hover:text-white transition">About Us</a></li>
+
                   <li><a href="#" className="hover:text-white transition">Contact</a></li>
-                  <li><a href="#" className="hover:text-white transition">Careers</a></li>
+
                 </ul>
               </div>
               
-              <div>
-                <h4 className="font-bold text-white mb-4 uppercase tracking-wide text-sm">Legal</h4>
-                <ul className="space-y-2 text-sm">
-                  <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-                  <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
-                  <li><a href="#" className="hover:text-white transition">Cookie Policy</a></li>
-                </ul>
-              </div>
+              
             </div>
             
             <div className="border-t border-gray-800 pt-8 text-center text-sm">
-              <p>© 2024 FuelFinance. All rights reserved. • Powered by Premium Fuel Technology</p>
+              <p>© 2025 FuelFinance. All rights reserved. • Powered by Premium Fuel Technology</p>
             </div>
           </div>
         </footer>

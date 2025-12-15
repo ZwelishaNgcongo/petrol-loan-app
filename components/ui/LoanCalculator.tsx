@@ -8,9 +8,9 @@ import { formatCurrency, calculateMonthlyPayment, calculateTotalInterest } from 
 
 export function LoanCalculator() {
   const router = useRouter();
-  const [loanAmount, setLoanAmount] = useState(5000);
+  const [loanAmount, setLoanAmount] = useState(500);
   const repaymentPeriod = 1; // Fixed at 1 month (30 days)
-  const interestRate = 10; // Fixed at 10% annual
+  const interestRate = 10; // Fixed at 10% for the month
 
   const monthlyPayment = calculateMonthlyPayment(loanAmount, repaymentPeriod, interestRate / 100);
   const totalInterest = calculateTotalInterest(loanAmount, repaymentPeriod, interestRate / 100);
@@ -44,18 +44,18 @@ export function LoanCalculator() {
           <input
             type="range"
             min="500"
-            max="20000"
-            step="500"
+            max="2000"
+            step="100"
             value={loanAmount}
             onChange={(e) => setLoanAmount(Number(e.target.value))}
             className="w-full h-3 bg-blue-100 rounded-lg appearance-none cursor-pointer slider"
             style={{
-              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((loanAmount - 500) / (20000 - 500)) * 100}%, #dbeafe ${((loanAmount - 500) / (20000 - 500)) * 100}%, #dbeafe 100%)`
+              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((loanAmount - 500) / (2000 - 500)) * 100}%, #dbeafe ${((loanAmount - 500) / (2000 - 500)) * 100}%, #dbeafe 100%)`
             }}
           />
           <div className="flex justify-between text-xs text-gray-500">
             <span>R500</span>
-            <span>R20,000</span>
+            <span>R2,000</span>
           </div>
         </div>
 
@@ -69,8 +69,8 @@ export function LoanCalculator() {
           
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
             <div className="text-sm text-gray-600 mb-1">Interest Rate</div>
-            <div className="text-2xl font-bold text-purple-600">{interestRate}% p.a.</div>
-            <div className="text-xs text-gray-500 mt-1">Competitive rate</div>
+            <div className="text-2xl font-bold text-purple-600">{interestRate}%</div>
+            <div className="text-xs text-gray-500 mt-1">Flat rate</div>
           </div>
         </div>
 

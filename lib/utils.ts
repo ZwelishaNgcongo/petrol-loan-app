@@ -60,30 +60,31 @@ export function formatRelativeTime(date: string | Date): string {
 }
 
 /**
- * Calculate loan monthly payment with interest
- * For 30-day loans, we calculate simple interest for 1 month
+ * Calculate loan monthly payment with 10% simple interest for 30 days
+ * Interest rate is 10% flat for the month, not per annum
  */
 export function calculateMonthlyPayment(
   loanAmount: number,
   repaymentPeriod: number = 1, // Default 1 month (30 days)
-  annualInterestRate: number = 0.10 // 10% annual rate
+  interestRate: number = 0.10 // 10% flat rate for the month
 ): number {
-  // For 30-day loans, calculate simple interest
-  const interest = loanAmount * annualInterestRate * (repaymentPeriod / 12);
+  // Simple 10% interest on the loan amount
+  const interest = loanAmount * interestRate;
   const totalAmount = loanAmount + interest;
-  return totalAmount / repaymentPeriod;
+  return totalAmount;
 }
 
 /**
  * Calculate total interest
- * For 30-day loans with 10% annual rate
+ * For 30-day loans with 10% flat rate
  */
 export function calculateTotalInterest(
   loanAmount: number,
   repaymentPeriod: number = 1, // 1 month
-  annualInterestRate: number = 0.10 // 10% annual
+  interestRate: number = 0.10 // 10% flat rate
 ): number {
-  return loanAmount * annualInterestRate * (repaymentPeriod / 12);
+  // Simple 10% of loan amount
+  return loanAmount * interestRate;
 }
 
 /**

@@ -20,6 +20,68 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
+ * Calculate total repayment amount with 10% simple interest
+ */
+export function calculateTotalRepayment(
+  loanAmount: number,
+  interestRate: number = 0.10 // 10% flat rate
+): number {
+  return loanAmount * (1 + interestRate);
+}
+
+/**
+ * Calculate monthly payment
+ * For a 1-month loan, this equals the total repayment
+ */
+export function calculateMonthlyPayment(
+  loanAmount: number,
+  repaymentPeriod: number = 1,
+  interestRate: number = 0.10
+): number {
+  const totalRepayment = calculateTotalRepayment(loanAmount, interestRate);
+  return totalRepayment / repaymentPeriod;
+}
+
+/**
+ * Calculate total interest
+ */
+export function calculateTotalInterest(
+  loanAmount: number,
+  interestRate: number = 0.10
+): number {
+  return loanAmount * interestRate;
+}
+
+/**
+ * Calculate all loan details at once
+ */
+export function calculateLoanDetails(
+  loanAmount: number,
+  repaymentPeriod: number = 1,
+  interestRate: number = 0.10
+): {
+  loanAmount: number;
+  interestRate: number;
+  interestAmount: number;
+  totalRepayment: number;
+  monthlyPayment: number;
+  repaymentPeriod: number;
+} {
+  const interestAmount = calculateTotalInterest(loanAmount, interestRate);
+  const totalRepayment = calculateTotalRepayment(loanAmount, interestRate);
+  const monthlyPayment = totalRepayment / repaymentPeriod;
+
+  return {
+    loanAmount,
+    interestRate,
+    interestAmount,
+    totalRepayment,
+    monthlyPayment,
+    repaymentPeriod,
+  };
+}
+
+/**
  * Format date to readable string
  */
 export function formatDate(date: string | Date): string {
@@ -57,34 +119,6 @@ export function formatRelativeTime(date: string | Date): string {
   if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
   if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
   return `${Math.floor(diffInSeconds / 31536000)} years ago`;
-}
-
-/**
- * Calculate loan monthly payment with 10% simple interest for 30 days
- * Interest rate is 10% flat for the month, not per annum
- */
-export function calculateMonthlyPayment(
-  loanAmount: number,
-  repaymentPeriod: number = 1, // Default 1 month (30 days)
-  interestRate: number = 0.10 // 10% flat rate for the month
-): number {
-  // Simple 10% interest on the loan amount
-  const interest = loanAmount * interestRate;
-  const totalAmount = loanAmount + interest;
-  return totalAmount;
-}
-
-/**
- * Calculate total interest
- * For 30-day loans with 10% flat rate
- */
-export function calculateTotalInterest(
-  loanAmount: number,
-  repaymentPeriod: number = 1, // 1 month
-  interestRate: number = 0.10 // 10% flat rate
-): number {
-  // Simple 10% of loan amount
-  return loanAmount * interestRate;
 }
 
 /**
@@ -147,7 +181,6 @@ export function assessAffordability(dti: number): {
 export function validateSAID(id: string): boolean {
   if (!/^\d{13}$/.test(id)) return false;
   
-  // Luhn algorithm for validation
   let sum = 0;
   let alternate = false;
   

@@ -102,12 +102,11 @@ export default function UserDashboard() {
   };
 
   const calculateMonthlyPayment = (loanAmount: number, period: number) => {
-    // Simple interest calculation: 15% annual interest
-    const interestRate = 0.15;
-    const totalInterest = loanAmount * (interestRate / 12) * period;
-    const totalAmount = loanAmount + totalInterest;
-    return (totalAmount / period).toFixed(2);
-  };
+  // Single payment loan with 10% interest (due in 30 days)
+  const interestRate = 0.10;
+  const totalAmount = loanAmount * (1 + interestRate);
+  return totalAmount.toFixed(2);
+};
 
   if (loading || !isLoaded) {
     return (

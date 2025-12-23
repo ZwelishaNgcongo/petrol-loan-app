@@ -73,6 +73,9 @@ model LoanApplication {
   loanAmount            Decimal             @db.Decimal(10, 2)
   loanPurpose           String              @default("Petrol/Fuel Purchase")
   repaymentPeriod       Int                 // in months
+  interestRate          Decimal             @default(0.10) @db.Decimal(5, 4)  // 10% flat rate
+  monthlyPayment        Decimal?            @db.Decimal(10, 2)  // Calculated monthly payment
+  totalRepayment        Decimal?            @db.Decimal(10, 2)  // Total amount to repay
   
   // Vehicle Information
   vehicleRegistration   String

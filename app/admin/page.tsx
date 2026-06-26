@@ -30,6 +30,51 @@ interface Application {
   };
 }
 
+function DocumentLink({
+  applicationId,
+  which,
+  label,
+}: {
+  applicationId: string;
+  which: 'id' | 'bank';
+  label: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/documents?applicationId=${applicationId}&which=${which}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load document');
+      }
+      // Open in a new tab. The URL expires in 5 minutes, so we mint it
+      // fresh on every click rather than caching it anywhere.
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
+      >
+        {loading ? 'Loading...' : label}
+      </button>
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 import { DashboardNavbar } from '@/components/dashboard/Navbar';
 
 export default function AdminDashboard() {
@@ -412,22 +457,13 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="font-semibold text-lg mb-3">Documents</h3>
                 <div className="flex gap-4">
-                  <a
-                    href={selectedApp.idDocumentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
-                  >
-                    View ID Document
-                  </a>
-                  <a
-                    href={selectedApp.bankStatementUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
-                  >
-                    View Bank Statement
-                  </a>
+                  <div>
+                  <h3 className="font-semibold text-lg mb-3">Documents</h3>
+                  <div className="flex gap-4">
+                  <DocumentLink applicationId={selectedApp.id} which="id" label="View ID Document" />
+                  <DocumentLink applicationId={selectedApp.id} which="bank" label="View Bank Statement" />
+                </div>
+               </div>
                 </div>
               </div>
 

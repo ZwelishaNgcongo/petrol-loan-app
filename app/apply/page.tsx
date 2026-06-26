@@ -109,20 +109,21 @@ export default function LoanApplicationForm() {
     return { isValid: true };
   };
 
-  const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'File upload failed' }));
-      throw new Error(errorData.error || 'File upload failed');
-    }
-    const data = await response.json();
-    return data.url;
-  };
+const uploadFile = async (file: File, docType: 'id_document' | 'bank_statement'): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('docType', docType);
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'File upload failed' }));
+    throw new Error(errorData.error || 'File upload failed');
+  }
+  const data = await response.json();
+  return data.url;
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,8 +137,9 @@ export default function LoanApplicationForm() {
         }
       }
       console.log('Uploading files...');
-      const idDocumentUrl = await uploadFile(files.idDocument!);
-      const bankStatementUrl = await uploadFile(files.bankStatement!);
+      const idDocumentUrl = await uploadFile(files.idDocument!, 'id_document');
+      const bankStatementUrl = await uploadFile(files.bankStatement!, 'bank_statement');
+ 
       const applicationData = {
         ...formData,
         idDocumentUrl,

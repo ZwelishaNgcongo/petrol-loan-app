@@ -1,6 +1,6 @@
 // lib/clerkHelper.ts
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "./prisma";
+import { prisma } from "./prisma";
 
 export async function getCurrentUser() {
   const clerkUser = await currentUser();

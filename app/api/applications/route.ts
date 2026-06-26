@@ -5,51 +5,77 @@ import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Helper function to calculate loan payments
-function calculateLoanPayments(loanAmount: number, repaymentPeriod: number, interestRate: number = 0.10) {
-  // Calculate total amount with interest (10% flat rate)
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function calculateLoanPayments(
+  loanAmount: number,
+  repaymentPeriod: number,
+  interestRate: number = 0.10
+) {
   const totalRepayment = loanAmount * (1 + interestRate);
-  
-  // Calculate monthly payment
   const monthlyPayment = totalRepayment / repaymentPeriod;
-  
-  return {
-    totalRepayment,
-    monthlyPayment,
-    interestAmount: loanAmount * interestRate
-  };
+  return { totalRepayment, monthlyPayment, interestAmount: loanAmount * interestRate };
 }
 
-// GET - Fetch applications (with role-based filtering)
+/**
+ * Auto-creates one repayment row per month of the repayment period.
+ * Called inside the PATCH transaction when status changes to APPROVED.
+ * Safe to call multiple times — skips if rows already exist.
+ */
+async function createRepaymentSchedule(
+  tx: Prisma.TransactionClient,
+  applicationId: string,
+  loanAmount: number,
+  repaymentPeriod: number,
+  interestRate: number,
+  existingTotalRepayment: number | null,
+  existingMonthlyPayment: number | null
+) {
+  const existing = await tx.repayment.count({ where: { applicationId } });
+  if (existing > 0) return; // already created, skip
+
+  const totalAmount =
+    existingTotalRepayment !== null
+      ? existingTotalRepayment
+      : loanAmount * (1 + interestRate);
+
+  const monthlyAmount =
+    existingMonthlyPayment !== null
+      ? existingMonthlyPayment
+      : totalAmount / repaymentPeriod;
+
+  const now = new Date();
+  const rows = Array.from({ length: repaymentPeriod }, (_, i) => {
+    const dueDate = new Date(now);
+    dueDate.setMonth(dueDate.getMonth() + i + 1);
+    return { applicationId, amountDue: monthlyAmount, dueDate, status: 'PENDING' };
+  });
+
+  await tx.repayment.createMany({ data: rows });
+}
+
+// ---------------------------------------------------------------------------
+// GET — fetch applications (role-based)
+// ---------------------------------------------------------------------------
+
 export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth();
-    
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
+    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const applications = await prisma.loanApplication.findMany({
       where: user.role === 'ADMIN' ? {} : { userId: user.id },
-      include: {
-        user: {
-          select: {
-            email: true,
-            clerkId: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      include: { user: { select: { email: true, clerkId: true } } },
+      orderBy: { createdAt: 'desc' },
     });
 
     return NextResponse.json(applications);
@@ -59,88 +85,52 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - Create new application
+// ---------------------------------------------------------------------------
+// POST — create new application
+// ---------------------------------------------------------------------------
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
-    
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
-    console.log('Received application data:', JSON.stringify(body, null, 2));
 
-    // Validate required fields
     const requiredFields = [
-      'firstName', 'lastName', 'dateOfBirth', 'phoneNumber', 
+      'firstName', 'lastName', 'dateOfBirth', 'phoneNumber',
       'residentialAddress', 'city', 'postalCode', 'employmentType',
       'employerName', 'monthlyIncome', 'employmentDuration', 'loanAmount',
       'repaymentPeriod', 'vehicleRegistration', 'vehicleMake', 'vehicleModel',
       'vehicleYear', 'averageMonthlyFuel', 'identificationType',
-      'identificationNumber', 'idDocumentUrl', 'bankStatementUrl', 'monthlyExpenses'
+      'identificationNumber', 'idDocumentUrl', 'bankStatementUrl', 'monthlyExpenses',
     ];
 
-    const missingFields = requiredFields.filter(field => {
-      const value = body[field];
-      return value === undefined || value === null || value === '';
-    });
-    
+    const missingFields = requiredFields.filter(
+      (f) => body[f] === undefined || body[f] === null || body[f] === ''
+    );
     if (missingFields.length > 0) {
-      console.error('Missing required fields:', missingFields);
-      return NextResponse.json({ 
-        error: `Missing required fields: ${missingFields.join(', ')}` 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
+    let user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user) {
-      console.log('User not found, creating new user with clerkId:', userId);
-      
-      let email = 'user@example.com';
-      try {
-        const clerkUserHeader = req.headers.get('clerk-user');
-        if (clerkUserHeader) {
-          const clerkUserData = JSON.parse(clerkUserHeader);
-          email = clerkUserData.email || email;
-        }
-      } catch (e) {
-        console.log('Could not parse clerk-user header, using default email');
-      }
-      
       user = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: email,
-        },
+        data: { clerkId: userId, email: 'user@example.com' },
       });
-      console.log('New user created:', user.id);
     }
 
-    console.log('Creating application for user:', user.id);
-
-    // Calculate loan payments (10% flat interest rate)
     const loanAmount = parseFloat(String(body.loanAmount));
     const repaymentPeriod = parseInt(String(body.repaymentPeriod));
     const payments = calculateLoanPayments(loanAmount, repaymentPeriod);
 
-    console.log('Calculated payments:', {
-      loanAmount,
-      repaymentPeriod,
-      totalRepayment: payments.totalRepayment,
-      monthlyPayment: payments.monthlyPayment,
-      interestAmount: payments.interestAmount
-    });
-
-    // Prepare data with proper Decimal conversion and calculated payments
     const applicationData: Prisma.LoanApplicationCreateInput = {
-      user: {
-        connect: { id: user.id }
-      },
+      user: { connect: { id: user.id } },
       firstName: String(body.firstName),
       lastName: String(body.lastName),
       dateOfBirth: new Date(body.dateOfBirth),
@@ -155,11 +145,10 @@ export async function POST(req: NextRequest) {
       monthlyIncome: new Prisma.Decimal(body.monthlyIncome),
       employmentDuration: parseInt(String(body.employmentDuration)),
       loanAmount: new Prisma.Decimal(loanAmount),
-      repaymentPeriod: repaymentPeriod,
-      // Add calculated payment fields
+      repaymentPeriod,
       monthlyPayment: new Prisma.Decimal(payments.monthlyPayment),
       totalRepayment: new Prisma.Decimal(payments.totalRepayment),
-      interestRate: new Prisma.Decimal(0.10), // 10% flat rate
+      interestRate: new Prisma.Decimal(0.10),
       vehicleRegistration: String(body.vehicleRegistration),
       vehicleMake: String(body.vehicleMake),
       vehicleModel: String(body.vehicleModel),
@@ -170,122 +159,153 @@ export async function POST(req: NextRequest) {
       idDocumentUrl: String(body.idDocumentUrl),
       bankStatementUrl: String(body.bankStatementUrl),
       hasExistingLoans: Boolean(body.hasExistingLoans),
-      existingLoanAmount: body.existingLoanAmount ? new Prisma.Decimal(body.existingLoanAmount) : null,
+      existingLoanAmount: body.existingLoanAmount
+        ? new Prisma.Decimal(body.existingLoanAmount)
+        : null,
       monthlyExpenses: new Prisma.Decimal(body.monthlyExpenses),
       status: 'PENDING',
     };
 
-    const application = await prisma.loanApplication.create({
-      data: applicationData,
-    });
+    const application = await prisma.loanApplication.create({ data: applicationData });
 
-    console.log('Application created successfully:', application.id);
-
-    // Create audit log
+    // Audit log (non-critical)
     try {
       await prisma.auditLog.create({
         data: {
           action: 'APPLICATION_CREATED',
-          userId: userId,
+          userId,
           targetId: application.id,
           details: {
-            loanAmount: loanAmount,
+            loanAmount,
             monthlyPayment: payments.monthlyPayment,
             totalRepayment: payments.totalRepayment,
             status: 'PENDING',
             applicantName: `${body.firstName} ${body.lastName}`,
-            vehicleInfo: `${body.vehicleYear} ${body.vehicleMake} ${body.vehicleModel}`,
           },
         },
       });
-      console.log('Audit log created successfully');
     } catch (auditError) {
-      console.error('Failed to create audit log (non-critical):', auditError);
+      console.error('Audit log failed (non-critical):', auditError);
     }
 
     return NextResponse.json(application, { status: 201 });
   } catch (error: any) {
     console.error('Error creating application:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-      name: error.name,
-    });
-    
+
     let errorMessage = 'Failed to create application';
-    let errorDetails = 'Unknown error';
-    
-    if (error.code === 'P2002') {
-      errorMessage = 'Duplicate entry detected';
-      errorDetails = 'This application may have already been submitted';
-    } else if (error.code === 'P2003') {
-      errorMessage = 'Invalid reference';
-      errorDetails = 'User reference is invalid';
-    } else if (error.message) {
-      errorDetails = error.message;
-    }
-    
-    return NextResponse.json({ 
-      error: errorMessage,
-      message: errorDetails,
-      code: error.code || 'UNKNOWN'
-    }, { status: 500 });
+    if (error.code === 'P2002') errorMessage = 'Duplicate entry detected';
+    if (error.code === 'P2003') errorMessage = 'Invalid user reference';
+
+    return NextResponse.json(
+      { error: errorMessage, message: error.message, code: error.code || 'UNKNOWN' },
+      { status: 500 }
+    );
   }
 }
 
-// PATCH - Update application status (admin only)
+// ---------------------------------------------------------------------------
+// PATCH — update status (admin only)
+// Writes ApplicationStatusHistory + optional repayment schedule in one transaction
+// ---------------------------------------------------------------------------
+
 export async function PATCH(req: NextRequest) {
   try {
     const { userId } = await auth();
-    
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
+    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden — admin access required' }, { status: 403 });
     }
 
     const body = await req.json();
     const { applicationId, status, adminNotes, rejectionReason } = body;
 
     if (!applicationId || !status) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: applicationId and status are required' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'applicationId and status are required' },
+        { status: 400 }
+      );
+    }
+
+    const validStatuses = ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'DISBURSED'];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: `Invalid status: ${status}` }, { status: 400 });
+    }
+
+    if (status === 'REJECTED' && !rejectionReason?.trim()) {
+      return NextResponse.json(
+        { error: 'rejectionReason is required when rejecting an application' },
+        { status: 400 }
+      );
     }
 
     const oldApplication = await prisma.loanApplication.findUnique({
       where: { id: applicationId },
+      select: {
+        status: true,
+        loanAmount: true,
+        repaymentPeriod: true,
+        interestRate: true,
+        totalRepayment: true,
+        monthlyPayment: true,
+      },
     });
 
     if (!oldApplication) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    const application = await prisma.loanApplication.update({
-      where: { id: applicationId },
-      data: {
-        status,
-        reviewedAt: new Date(),
-        reviewedBy: userId,
-        adminNotes: adminNotes || null,
-        rejectionReason: rejectionReason || null,
-      },
+    // Run everything in one transaction: update + history + optional repayment schedule
+    const application = await prisma.$transaction(async (tx) => {
+      const updated = await tx.loanApplication.update({
+        where: { id: applicationId },
+        data: {
+          status,
+          reviewedAt: new Date(),
+          reviewedBy: userId,
+          adminNotes: adminNotes || null,
+          rejectionReason: rejectionReason || null,
+        },
+      });
+
+      await tx.applicationStatusHistory.create({
+        data: {
+          applicationId,
+          fromStatus: oldApplication.status,
+          toStatus: status,
+          changedBy: userId,
+          notes:
+            status === 'REJECTED'
+              ? rejectionReason || null
+              : adminNotes || null,
+        },
+      });
+
+      // Auto-create repayment schedule on first approval
+      if (status === 'APPROVED') {
+        await createRepaymentSchedule(
+          tx,
+          applicationId,
+          Number(oldApplication.loanAmount),
+          oldApplication.repaymentPeriod,
+          Number(oldApplication.interestRate),
+          oldApplication.totalRepayment !== null ? Number(oldApplication.totalRepayment) : null,
+          oldApplication.monthlyPayment !== null ? Number(oldApplication.monthlyPayment) : null
+        );
+      }
+
+      return updated;
     });
 
-    // Create audit log
+    // Audit log (outside transaction — non-critical)
     try {
       await prisma.auditLog.create({
         data: {
           action: 'APPLICATION_STATUS_UPDATED',
-          userId: userId,
+          userId,
           targetId: applicationId,
           details: {
             oldStatus: oldApplication.status,
@@ -297,15 +317,15 @@ export async function PATCH(req: NextRequest) {
         },
       });
     } catch (auditError) {
-      console.error('Failed to create audit log (non-critical):', auditError);
+      console.error('Audit log failed (non-critical):', auditError);
     }
 
     return NextResponse.json(application);
   } catch (error: any) {
     console.error('Error updating application:', error);
-    return NextResponse.json({ 
-      error: 'Failed to update application',
-      message: error.message 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update application', message: error.message },
+      { status: 500 }
+    );
   }
 }

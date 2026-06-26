@@ -13,9 +13,10 @@ import {
 
 const prisma = new PrismaClient();
 
-/**
- * Create or get user in database
- */
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+
 export async function getCurrentUser() {
   try {
     const { userId } = await auth();
@@ -24,9 +25,7 @@ export async function getCurrentUser() {
     const clerkUser = await currentUser();
     if (!clerkUser) return null;
 
-    let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    let user = await prisma.user.findUnique({ where: { clerkId: userId } });
 
     if (!user) {
       user = await prisma.user.create({
@@ -45,9 +44,6 @@ export async function getCurrentUser() {
   }
 }
 
-/**
- * Check if user is admin
- */
 export async function checkIsAdmin(): Promise<boolean> {
   try {
     const user = await getCurrentUser();
@@ -57,19 +53,17 @@ export async function checkIsAdmin(): Promise<boolean> {
   }
 }
 
-/**
- * Create loan application
- */
+// ---------------------------------------------------------------------------
+// Create loan application
+// ---------------------------------------------------------------------------
+
 export async function createLoanApplication(formData: FormData) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    if (!user) return { success: false, error: 'Unauthorized' };
 
     const data = Object.fromEntries(formData);
-    
-    // Convert string numbers to actual numbers
+
     const parsedData = {
       ...data,
       dateOfBirth: new Date(data.dateOfBirth as string),
@@ -81,11 +75,12 @@ export async function createLoanApplication(formData: FormData) {
       averageMonthlyFuel: parseFloat(data.averageMonthlyFuel as string),
       monthlyExpenses: parseFloat(data.monthlyExpenses as string),
       hasExistingLoans: data.hasExistingLoans === 'true',
-      existingLoanAmount: data.existingLoanAmount ? parseFloat(data.existingLoanAmount as string) : null,
+      existingLoanAmount: data.existingLoanAmount
+        ? parseFloat(data.existingLoanAmount as string)
+        : null,
     };
 
     const validation = validateSchema(loanApplicationSchema, parsedData);
-    
     if (!validation.success) {
       return {
         success: false,
@@ -128,16 +123,12 @@ export async function createLoanApplication(formData: FormData) {
       },
     });
 
-    // Create audit log
     await prisma.auditLog.create({
       data: {
         action: 'APPLICATION_CREATED',
         userId: user.clerkId,
         targetId: application.id,
-        details: {
-          loanAmount: validation.data.loanAmount,
-          status: 'PENDING',
-        },
+        details: { loanAmount: validation.data.loanAmount, status: 'PENDING' },
       },
     });
 
@@ -149,58 +140,42 @@ export async function createLoanApplication(formData: FormData) {
   }
 }
 
-/**
- * Get user applications
- */
+// ---------------------------------------------------------------------------
+// Read applications
+// ---------------------------------------------------------------------------
+
 export async function getUserApplications() {
   try {
     const user = await getCurrentUser();
     if (!user) return [];
 
-    const applications = await prisma.loanApplication.findMany({
+    return prisma.loanApplication.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
     });
-
-    return applications;
   } catch (error) {
     console.error('Error fetching applications:', error);
     return [];
   }
 }
 
-/**
- * Get all applications (Admin only)
- */
 export async function getAllApplications() {
   try {
     const isAdmin = await checkIsAdmin();
-    if (!isAdmin) {
-      throw new Error('Unauthorized');
-    }
+    if (!isAdmin) throw new Error('Unauthorized');
 
-    const applications = await prisma.loanApplication.findMany({
+    return prisma.loanApplication.findMany({
       include: {
-        user: {
-          select: {
-            email: true,
-            clerkId: true,
-          },
-        },
+        user: { select: { email: true, clerkId: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    return applications;
   } catch (error) {
     console.error('Error fetching all applications:', error);
     return [];
   }
 }
 
-/**
- * Get single application
- */
 export async function getApplication(id: string) {
   try {
     const user = await getCurrentUser();
@@ -209,21 +184,14 @@ export async function getApplication(id: string) {
     const application = await prisma.loanApplication.findUnique({
       where: { id },
       include: {
-        user: {
-          select: {
-            email: true,
-            clerkId: true,
-            role: true,
-          },
-        },
+        user: { select: { email: true, clerkId: true, role: true } },
+        statusHistory: { orderBy: { createdAt: 'asc' } },
+        repayments: { orderBy: { dueDate: 'asc' } },
       },
     });
 
-    // Check authorization
     if (!application) return null;
-    if (user.role !== 'ADMIN' && application.userId !== user.id) {
-      return null;
-    }
+    if (user.role !== 'ADMIN' && application.userId !== user.id) return null;
 
     return application;
   } catch (error) {
@@ -232,9 +200,33 @@ export async function getApplication(id: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Status history
+// ---------------------------------------------------------------------------
+
 /**
- * Update application status (Admin only)
+ * Returns the full status-change history for a given application.
+ * Admin-only.
  */
+export async function getStatusHistory(applicationId: string) {
+  try {
+    const isAdmin = await checkIsAdmin();
+    if (!isAdmin) return [];
+
+    return prisma.applicationStatusHistory.findMany({
+      where: { applicationId },
+      orderBy: { createdAt: 'asc' },
+    });
+  } catch (error) {
+    console.error('Error fetching status history:', error);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Update application status  (now also writes history row)
+// ---------------------------------------------------------------------------
+
 export async function updateApplicationStatus(
   applicationId: string,
   status: string,
@@ -262,34 +254,61 @@ export async function updateApplicationStatus(
       };
     }
 
-    const application = await prisma.loanApplication.update({
+    // Fetch current status so we can record the transition
+    const current = await prisma.loanApplication.findUnique({
       where: { id: applicationId },
-      data: {
-        status: validation.data.status,
-        reviewedAt: new Date(),
-        reviewedBy: user.clerkId,
-        adminNotes: validation.data.adminNotes || null,
-        rejectionReason: validation.data.rejectionReason || null,
-      },
+      select: { status: true },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        action: 'APPLICATION_STATUS_UPDATED',
-        userId: user.clerkId,
-        targetId: applicationId,
-        details: {
-          newStatus: validation.data.status,
-          adminNotes: validation.data.adminNotes,
-          rejectionReason: validation.data.rejectionReason,
+    if (!current) return { success: false, error: 'Application not found' };
+
+    // Run update + history insert in one transaction
+    const [application] = await prisma.$transaction([
+      prisma.loanApplication.update({
+        where: { id: applicationId },
+        data: {
+          status: validation.data.status,
+          reviewedAt: new Date(),
+          reviewedBy: user.clerkId,
+          adminNotes: validation.data.adminNotes || null,
+          rejectionReason: validation.data.rejectionReason || null,
         },
-      },
-    });
+      }),
+      prisma.applicationStatusHistory.create({
+        data: {
+          applicationId,
+          fromStatus: current.status,
+          toStatus: validation.data.status,
+          changedBy: user.clerkId,
+          notes:
+            validation.data.status === 'REJECTED'
+              ? validation.data.rejectionReason || null
+              : validation.data.adminNotes || null,
+        },
+      }),
+      prisma.auditLog.create({
+        data: {
+          action: 'APPLICATION_STATUS_UPDATED',
+          userId: user.clerkId,
+          targetId: applicationId,
+          details: {
+            fromStatus: current.status,
+            newStatus: validation.data.status,
+            adminNotes: validation.data.adminNotes,
+            rejectionReason: validation.data.rejectionReason,
+          },
+        },
+      }),
+    ]);
+
+    // When an application is approved, auto-create the repayment schedule
+    if (validation.data.status === 'APPROVED') {
+      await _createRepaymentScheduleInternal(applicationId);
+    }
 
     revalidatePath('/admin');
     revalidatePath('/dashboard');
-    
+
     return { success: true, application };
   } catch (error) {
     console.error('Error updating application:', error);
@@ -297,9 +316,185 @@ export async function updateApplicationStatus(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Repayments
+// ---------------------------------------------------------------------------
+
 /**
- * Delete application (Admin only)
+ * Internal helper — called automatically when an application is approved.
+ * Creates one repayment row per repayment period month.
  */
+async function _createRepaymentScheduleInternal(applicationId: string) {
+  try {
+    const app = await prisma.loanApplication.findUnique({
+      where: { id: applicationId },
+      select: {
+        loanAmount: true,
+        repaymentPeriod: true,
+        interestRate: true,
+        totalRepayment: true,
+        monthlyPayment: true,
+        repayments: { select: { id: true } },
+      },
+    });
+
+    if (!app || app.repayments.length > 0) return; // already created
+
+    const loanAmount = Number(app.loanAmount);
+    const interestRate = Number(app.interestRate);
+    const repaymentPeriod = app.repaymentPeriod;
+
+    const totalAmount =
+      app.totalRepayment !== null
+        ? Number(app.totalRepayment)
+        : loanAmount * (1 + interestRate);
+
+    const monthlyAmount =
+      app.monthlyPayment !== null
+        ? Number(app.monthlyPayment)
+        : totalAmount / repaymentPeriod;
+
+    const now = new Date();
+    const rows = Array.from({ length: repaymentPeriod }, (_, i) => {
+      const dueDate = new Date(now);
+      dueDate.setMonth(dueDate.getMonth() + i + 1);
+      return {
+        applicationId,
+        amountDue: monthlyAmount,
+        dueDate,
+        status: 'PENDING',
+      };
+    });
+
+    await prisma.repayment.createMany({ data: rows });
+  } catch (error) {
+    console.error('Error creating repayment schedule:', error);
+    // Non-critical — don't throw, approval already succeeded
+  }
+}
+
+/**
+ * Fetches repayments for a given application.
+ * Admin can see any; user can only see their own.
+ */
+export async function getRepayments(applicationId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
+
+    // Verify ownership / admin access
+    const app = await prisma.loanApplication.findUnique({
+      where: { id: applicationId },
+      select: { userId: true },
+    });
+
+    if (!app) return [];
+    if (user.role !== 'ADMIN' && app.userId !== user.id) return [];
+
+    return prisma.repayment.findMany({
+      where: { applicationId },
+      orderBy: { dueDate: 'asc' },
+    });
+  } catch (error) {
+    console.error('Error fetching repayments:', error);
+    return [];
+  }
+}
+
+/**
+ * Mark a repayment as paid (Admin only).
+ */
+export async function markRepaymentPaid(repaymentId: string, amountPaid: number) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'ADMIN') {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const repayment = await prisma.repayment.findUnique({
+      where: { id: repaymentId },
+      select: { amountDue: true, applicationId: true },
+    });
+
+    if (!repayment) return { success: false, error: 'Repayment not found' };
+
+    const isPaid = amountPaid >= Number(repayment.amountDue);
+
+    const updated = await prisma.repayment.update({
+      where: { id: repaymentId },
+      data: {
+        amountPaid,
+        paidAt: isPaid ? new Date() : null,
+        status: isPaid ? 'PAID' : 'PENDING',
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'REPAYMENT_RECORDED',
+        userId: user.clerkId,
+        targetId: repaymentId,
+        details: {
+          applicationId: repayment.applicationId,
+          amountDue: Number(repayment.amountDue),
+          amountPaid,
+          status: updated.status,
+        },
+      },
+    });
+
+    // Check if all repayments are now paid → auto-set application to DISBURSED
+    const allRepayments = await prisma.repayment.findMany({
+      where: { applicationId: repayment.applicationId },
+      select: { status: true },
+    });
+
+    const allPaid = allRepayments.every((r) => r.status === 'PAID');
+    if (allPaid) {
+      await prisma.loanApplication.update({
+        where: { id: repayment.applicationId },
+        data: { status: 'DISBURSED' },
+      });
+    }
+
+    revalidatePath('/admin');
+    return { success: true, repayment: updated };
+  } catch (error) {
+    console.error('Error marking repayment paid:', error);
+    return { success: false, error: 'Failed to record repayment' };
+  }
+}
+
+/**
+ * Mark overdue repayments. Call this from a cron job or on admin page load.
+ * Admin only.
+ */
+export async function markOverdueRepayments() {
+  try {
+    const isAdmin = await checkIsAdmin();
+    if (!isAdmin) return { success: false, error: 'Unauthorized' };
+
+    const now = new Date();
+
+    const result = await prisma.repayment.updateMany({
+      where: {
+        status: 'PENDING',
+        dueDate: { lt: now },
+      },
+      data: { status: 'OVERDUE' },
+    });
+
+    return { success: true, markedOverdue: result.count };
+  } catch (error) {
+    console.error('Error marking overdue repayments:', error);
+    return { success: false, error: 'Failed to mark overdue repayments' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delete application
+// ---------------------------------------------------------------------------
+
 export async function deleteApplication(applicationId: string) {
   try {
     const user = await getCurrentUser();
@@ -307,11 +502,8 @@ export async function deleteApplication(applicationId: string) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    await prisma.loanApplication.delete({
-      where: { id: applicationId },
-    });
+    await prisma.loanApplication.delete({ where: { id: applicationId } });
 
-    // Create audit log
     await prisma.auditLog.create({
       data: {
         action: 'APPLICATION_DELETED',
@@ -329,47 +521,51 @@ export async function deleteApplication(applicationId: string) {
   }
 }
 
-/**
- * Get application statistics
- */
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
 export async function getApplicationStats() {
   try {
     const user = await getCurrentUser();
     if (!user) return null;
 
     if (user.role === 'ADMIN') {
-      // Admin stats - all applications
-      const [total, pending, approved, rejected, disbursed] = await Promise.all([
-        prisma.loanApplication.count(),
-        prisma.loanApplication.count({ where: { status: 'PENDING' } }),
-        prisma.loanApplication.count({ where: { status: 'APPROVED' } }),
-        prisma.loanApplication.count({ where: { status: 'REJECTED' } }),
-        prisma.loanApplication.count({ where: { status: 'DISBURSED' } }),
-      ]);
+      const [total, pending, underReview, approved, rejected, disbursed] =
+        await Promise.all([
+          prisma.loanApplication.count(),
+          prisma.loanApplication.count({ where: { status: 'PENDING' } }),
+          prisma.loanApplication.count({ where: { status: 'UNDER_REVIEW' } }),
+          prisma.loanApplication.count({ where: { status: 'APPROVED' } }),
+          prisma.loanApplication.count({ where: { status: 'REJECTED' } }),
+          prisma.loanApplication.count({ where: { status: 'DISBURSED' } }),
+        ]);
 
       const totalLoanAmount = await prisma.loanApplication.aggregate({
         _sum: { loanAmount: true },
         where: { status: { in: ['APPROVED', 'DISBURSED'] } },
       });
 
+      const overdueCount = await prisma.repayment.count({
+        where: { status: 'OVERDUE' },
+      });
+
       return {
         total,
         pending,
+        underReview,
         approved,
         rejected,
         disbursed,
         totalDisbursed: totalLoanAmount._sum.loanAmount || 0,
+        overdueRepayments: overdueCount,
       };
     } else {
-      // User stats - only their applications
       const [total, pending, approved, rejected] = await Promise.all([
         prisma.loanApplication.count({ where: { userId: user.id } }),
         prisma.loanApplication.count({ where: { userId: user.id, status: 'PENDING' } }),
-        prisma.loanApplication.count({ 
-          where: { 
-            userId: user.id, 
-            status: { in: ['APPROVED', 'DISBURSED'] } 
-          } 
+        prisma.loanApplication.count({
+          where: { userId: user.id, status: { in: ['APPROVED', 'DISBURSED'] } },
         }),
         prisma.loanApplication.count({ where: { userId: user.id, status: 'REJECTED' } }),
       ]);
@@ -382,39 +578,35 @@ export async function getApplicationStats() {
   }
 }
 
-/**
- * Get recent audit logs (Admin only)
- */
+// ---------------------------------------------------------------------------
+// Audit logs
+// ---------------------------------------------------------------------------
+
 export async function getAuditLogs(limit: number = 50) {
   try {
     const isAdmin = await checkIsAdmin();
-    if (!isAdmin) {
-      return [];
-    }
+    if (!isAdmin) return [];
 
-    const logs = await prisma.auditLog.findMany({
+    return prisma.auditLog.findMany({
       take: limit,
       orderBy: { createdAt: 'desc' },
     });
-
-    return logs;
   } catch (error) {
     console.error('Error fetching audit logs:', error);
     return [];
   }
 }
 
-/**
- * Search applications (Admin only)
- */
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
 export async function searchApplications(query: string) {
   try {
     const isAdmin = await checkIsAdmin();
-    if (!isAdmin) {
-      return [];
-    }
+    if (!isAdmin) return [];
 
-    const applications = await prisma.loanApplication.findMany({
+    return prisma.loanApplication.findMany({
       where: {
         OR: [
           { firstName: { contains: query, mode: 'insensitive' } },
@@ -424,17 +616,9 @@ export async function searchApplications(query: string) {
           { vehicleRegistration: { contains: query, mode: 'insensitive' } },
         ],
       },
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
+      include: { user: { select: { email: true } } },
       take: 20,
     });
-
-    return applications;
   } catch (error) {
     console.error('Error searching applications:', error);
     return [];

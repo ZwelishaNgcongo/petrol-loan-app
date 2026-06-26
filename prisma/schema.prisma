@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -37,92 +35,139 @@ enum IdentificationType {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  clerkId       String   @unique
-  email         String   @unique
-  role          UserRole @default(USER)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  clerkId      String   @unique
+  email        String   @unique
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  applications  LoanApplication[]
+  applications LoanApplication[]
 }
 
 model LoanApplication {
-  id                    String              @id @default(cuid())
-  userId                String
-  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Personal Information
-  firstName             String
-  lastName              String
-  dateOfBirth           DateTime
-  phoneNumber           String
-  alternativePhone      String?
-  residentialAddress    String
-  city                  String
-  postalCode            String
-  
+  firstName           String
+  lastName            String
+  dateOfBirth         DateTime
+  phoneNumber         String
+  alternativePhone    String?
+  residentialAddress  String
+  city                String
+  postalCode          String
+
   // Employment Information
-  employmentType        EmploymentType
-  employerName          String
-  employerAddress       String?
-  monthlyIncome         Decimal             @db.Decimal(10, 2)
-  employmentDuration    Int                 // in months
-  
+  employmentType     EmploymentType
+  employerName       String
+  employerAddress    String?
+  monthlyIncome      Decimal        @db.Decimal(10, 2)
+  employmentDuration Int            // in months
+
   // Loan Details
-  loanAmount            Decimal             @db.Decimal(10, 2)
-  loanPurpose           String              @default("Petrol/Fuel Purchase")
-  repaymentPeriod       Int                 // in months
-  interestRate          Decimal             @default(0.10) @db.Decimal(5, 4)  // 10% flat rate
-  monthlyPayment        Decimal?            @db.Decimal(10, 2)  // Calculated monthly payment
-  totalRepayment        Decimal?            @db.Decimal(10, 2)  // Total amount to repay
-  
+  loanAmount      Decimal  @db.Decimal(10, 2)
+  loanPurpose     String   @default("Petrol/Fuel Purchase")
+  repaymentPeriod Int      // in months
+  interestRate    Decimal  @default(0.10) @db.Decimal(5, 4) // 10% flat rate
+  monthlyPayment  Decimal? @db.Decimal(10, 2)               // Calculated monthly payment
+  totalRepayment  Decimal? @db.Decimal(10, 2)               // Total amount to repay
+
   // Vehicle Information
-  vehicleRegistration   String
-  vehicleMake           String
-  vehicleModel          String
-  vehicleYear           Int
-  averageMonthlyFuel    Decimal             @db.Decimal(10, 2)
-  
+  vehicleRegistration String
+  vehicleMake         String
+  vehicleModel        String
+  vehicleYear         Int
+  averageMonthlyFuel  Decimal @db.Decimal(10, 2)
+
   // Identification
-  identificationType    IdentificationType
-  identificationNumber  String
-  idDocumentUrl         String              // URL to uploaded ID
-  
+  identificationType   IdentificationType
+  identificationNumber String
+  idDocumentUrl        String             // encoded ref: resourceType|format|publicId
+
+  // NEW: structured document metadata (populated going forward; old rows keep NULL)
+  idDocumentPublicId       String?
+  idDocumentResourceType   String? // "image" | "raw"
+  idDocumentFormat         String?
+
   // Financial Documents
-  bankStatementUrl      String              // URL to uploaded bank statement
-  
+  bankStatementUrl String // encoded ref: resourceType|format|publicId
+
+  // NEW: structured document metadata
+  bankStatementPublicId      String?
+  bankStatementResourceType  String?
+  bankStatementFormat        String?
+
   // Additional Information
-  hasExistingLoans      Boolean             @default(false)
-  existingLoanAmount    Decimal?            @db.Decimal(10, 2)
-  monthlyExpenses       Decimal             @db.Decimal(10, 2)
-  
+  hasExistingLoans   Boolean  @default(false)
+  existingLoanAmount Decimal? @db.Decimal(10, 2)
+  monthlyExpenses    Decimal  @db.Decimal(10, 2)
+
   // Application Status
-  status                ApplicationStatus   @default(PENDING)
-  applicationDate       DateTime            @default(now())
-  reviewedAt            DateTime?
-  reviewedBy            String?             // Admin Clerk ID
-  adminNotes            String?
-  rejectionReason       String?
-  
+  status          ApplicationStatus @default(PENDING)
+  applicationDate DateTime          @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?           // Admin Clerk ID
+  adminNotes      String?
+  rejectionReason String?
+
   // Timestamps
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  statusHistory ApplicationStatusHistory[]
+  repayments    Repayment[]
 
   @@index([userId])
   @@index([status])
 }
 
+// NEW: every status change is recorded — never overwritten
+model ApplicationStatusHistory {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   LoanApplication   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fromStatus    ApplicationStatus
+  toStatus      ApplicationStatus
+  changedBy     String            // Clerk ID of the admin who made the change
+  notes         String?           // admin notes or rejection reason at time of change
+  createdAt     DateTime          @default(now())
+
+  @@index([applicationId])
+  @@index([createdAt])
+}
+
+// NEW: tracks repayment schedule and actual payments
+model Repayment {
+  id            String          @id @default(cuid())
+  applicationId String
+  application   LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  amountDue     Decimal         @db.Decimal(10, 2)
+  amountPaid    Decimal         @db.Decimal(10, 2) @default(0)
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        String          @default("PENDING") // PENDING | PAID | OVERDUE | DEFAULTED
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
 model AuditLog {
-  id          String   @id @default(cuid())
-  action      String
-  userId      String
-  targetId    String?
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  action    String
+  userId    String
+  targetId  String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])

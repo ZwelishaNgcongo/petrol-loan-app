@@ -13,8 +13,7 @@ export function LoanCalculator() {
   const interestRate = 10; // Fixed at 10% for the month
 
   const monthlyPayment = calculateMonthlyPayment(loanAmount, repaymentPeriod, interestRate / 100);
-  const totalInterest = calculateTotalInterest(loanAmount, repaymentPeriod, interestRate / 100);
-  const totalAmount = loanAmount + totalInterest;
+const totalInterest = calculateTotalInterest(loanAmount, interestRate / 100);  const totalAmount = loanAmount + totalInterest;
 
   const handleApplyClick = () => {
     router.push('/sign-up');
